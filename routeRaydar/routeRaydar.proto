@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package routeRaydar;
+
+option go_package = "github.com/Craigp10/routeRaydar/routeRaydar";
+
+
+// The route service definition.
+service RouteService {
+  // GetRoute returns the details of a specific route.
+  rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
+}
+
+// The request message containing the route ID.
+message GetRouteRequest {
+  string route_id = 1;
+}
+
+// The response message containing the route details.
+message GetRouteResponse {
+  string route_id = 1;
+  // Add other fields as needed to describe the route
+}
