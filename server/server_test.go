@@ -32,11 +32,42 @@ func TestRPC(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 
+	// t.Run("Test Send Coordinates", func(t *testing.T) {
+	// 	res, err := client.SendCoordinates(ctx, &pb.SendCoordinatesRequest{
+	// 		Start: &pb.Coordinates{
+	// 			X: 4,
+	// 			Y: 8,
+	// 		},
+	// 		End: &pb.Coordinates{
+	// 			X: 2,
+	// 			Y: 7,
+	// 		},
+	// 	})
+	// 	require.NoError(t, err)
+	// 	require.NotEmpty(t, res)
+	// })
+
 	t.Run("Test Send Coordinates", func(t *testing.T) {
 		res, err := client.SendCoordinates(ctx, &pb.SendCoordinatesRequest{
 			Start: &pb.Coordinates{
-				X: 4,
-				Y: 8,
+				X: 2,
+				Y: 4,
+			},
+			End: &pb.Coordinates{
+				X: 8,
+				Y: 9,
+			},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
+		require.Equal(t, int64(11), res.GetDistance())
+	})
+
+	t.Run("Test Send Coordinates", func(t *testing.T) {
+		res, err := client.SendCoordinates(ctx, &pb.SendCoordinatesRequest{
+			Start: &pb.Coordinates{
+				X: 2,
+				Y: 4,
 			},
 			End: &pb.Coordinates{
 				X: 0,
@@ -45,5 +76,6 @@ func TestRPC(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
+		require.Equal(t, int64(6), res.GetDistance())
 	})
 }

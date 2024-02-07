@@ -83,81 +83,127 @@ func (s *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRe
 	return &pb.SubmitGridResponse{Grid: grid}, nil
 }
 
-// Implement the SendNewPoints method of the RouteRaydarServer interface
-func (s *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
-	// Your implementation for SendNewPoints
-	st := req.GetStart()
-	ed := req.GetEnd()
+func search(grid Matrix, st, ed *pb.Coordinates) *pb.SendCoordinatesResponse {
 
-	// Validate the coordinates are within the grid is within the
-	if coordinatesOutOfPlane(s.grid, st) || coordinatesOutOfPlane(s.grid, ed) {
-		return nil, fmt.Errorf("the provided start or end coordinate is not on the grid plane.")
-	}
+	// Initialize structures to manage the search
 
-	// Else calculate route
+	// Visited - maintain a map of 'seen' coordinates to avoid duplicate work
 	visited := make(map[string]bool)
+
+	// Counted distance of movements made in the path
 	dist := make(map[*pb.Coordinates]int)
-	dist[st] = 0
+
+	// Adjancy List to track paths during the search -- used to reverse the shortest path and return it
+	path := make(map[string]*pb.Coordinates)
+
+	// Queue to execute the BFS search.
 	queue := []*pb.Coordinates{st}
-	queue = append(queue, st)
+
+	// Potential directions allow to search in.
 	dirs := [][]int64{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
-	var res int
+
+	// Set initial values to begin search with
+	dist[st] = 0
+	path[st.String()] = st
+	queue = append(queue, st)
+
+	var shortestPathDistance int
+	var shortestRoute []*pb.Coordinates
+
 	for len(queue) > 0 {
+
 		popped := queue[0]
 		queue = queue[1:]
-		// popped, _ := dequeue(queue)
+
+		// Base case -- search has reached the target coordinate, return.
 		if popped.GetX() == ed.X && popped.GetY() == ed.Y {
-			res = dist[popped]
-			break
+			shortestPathDistance = dist[popped]
+			shortestRoute = reconstructPath(st, ed, path)
+			return &pb.SendCoordinatesResponse{
+				Route:    shortestRoute,
+				Distance: int64(shortestPathDistance),
+			}
 		}
-		if popped == nil {
-			// No path found.
-			break
-		}
-		if visited[popped.String()] {
+
+		// Current coordinate has been seen before, skip.
+		if visited[popped.String()] == true {
 			continue
 		}
+		visited[popped.String()] = true
+
+		// iterate for each direction from current coordinate.
 		for _, dir := range dirs {
 			dX, dY := popped.GetX()+dir[0], popped.GetY()+dir[1]
-			// next := Coordinates{curr.X + dir.X, curr.Y + dir.Y}
 			newCoord := &pb.Coordinates{
 				X: dX,
 				Y: dY,
 			}
-			if coordinatesOutOfPlane(s.grid, newCoord) || visited[newCoord.String()] == true {
+
+			if validCoordinates(grid, newCoord) != true || visited[newCoord.String()] == true {
 				continue
 			}
-			visited[popped.String()] = true
+
+			// Manage structures with current coordinate directions
+			path[newCoord.String()] = popped
 			dist[newCoord] = dist[popped] + 1
 			queue = append(queue, newCoord)
-			// Need to make a break condition and record the route....
+		}
+	}
+	return nil
+}
+
+// Implement the SendNewPoints method of the RouteRaydarServer interface.
+func (s *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
+	st := req.GetStart()
+	ed := req.GetEnd()
+
+	if !validCoordinates(s.grid, st) || !validCoordinates(s.grid, ed) {
+		return nil, fmt.Errorf("the provided start or end coordinate is not on the grid plane.")
+	}
+
+	// Begin searching the grid
+	res := search(s.grid, st, ed)
+	if res == nil {
+		return nil, fmt.Errorf("Path not found")
+	}
+
+	return res, nil
+}
+
+// Re construct the shortest path utilizing the path adjancey matrix.
+func reconstructPath(start, end *pb.Coordinates, path map[string]*pb.Coordinates) []*pb.Coordinates {
+	var route []*pb.Coordinates
+	// Start from end (work backwards through the route).
+	current := end
+
+	// While current is not equal to start, iterate.
+	for current != start {
+		// append the current coordinate at the beginning of the route.
+		route = append([]*pb.Coordinates{current}, route...)
+		current = path[current.String()]
+		// If we've reached the start then append the start and end iteration.
+		if current == start {
+			route = append([]*pb.Coordinates{start}, route...)
 		}
 	}
 
-	// path := []*pb.Coordinates{ed}
-	// current := ed
-	// for current != st {
-	// 	// current = dist[current.String()]
-	// 	path = append(path, current)
-	// }
-	// fmt.Println(res, dist)
-	return &pb.SendCoordinatesResponse{
-		Distance: int64(res),
-	}, nil
+	return route
 }
 
-func dequeue(queue []*pb.Coordinates) (*pb.Coordinates, []*pb.Coordinates) {
-	if len(queue) == 0 {
-		return nil, queue // Return 0 or handle empty queue case
-	}
-	first := queue[0]
-	queue = queue[1:] // Remove the first element
-	return first, queue
-}
+// TODO: Implement proirity Queue to improve performance on search.
+// func dequeue(queue []*pb.Coordinates) (*pb.Coordinates, []*pb.Coordinates) {
+// 	if len(queue) == 0 {
+// 		return nil, queue // Return 0 or handle empty queue case
+// 	}
+// 	first := queue[0]
+// 	queue = queue[1:] // Remove the first element
+// 	return first, queue
+// }
 
-func coordinatesOutOfPlane(grid Matrix, coord *pb.Coordinates) bool {
+// validCoordinates validates that the provided coordinates are valid on the provided matrix.
+func validCoordinates(grid Matrix, coord *pb.Coordinates) bool {
 	if coord.X < 0 || coord.Y < 0 || coord.X >= grid.Rows || coord.Y >= grid.Rows {
-		return true
+		return false
 	}
-	return false
+	return true
 }
