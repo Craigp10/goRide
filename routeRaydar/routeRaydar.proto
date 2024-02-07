@@ -26,10 +26,6 @@ message Coordinates {
   int64 y = 2;
 }
 
-message Route {
-  repeated Coordinates route = 1;
-}
-
 // The request message containing the route ID.
 message GetRouteRequest {
   string route_id = 1;
@@ -65,6 +61,6 @@ message SendCoordinatesRequest {
 message SendCoordinatesResponse {
   // Define the structure of the new points response message
   // Add fields as needed
-  Route route = 1;
+  repeated Coordinates route = 1;
   int64 distance = 2;
 }
