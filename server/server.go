@@ -74,7 +74,9 @@ func (s *RouteRaydarServer) storeGrid(rows, cols int64) (Matrix, error) {
 func (s *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRequest) (*pb.SubmitGridResponse, error) {
 	// Your implementation for SubmitGrid
 	height, width := req.GetHeight(), req.GetWidth()
-
+	if height < 0 || width < 0 {
+		return nil, fmt.Errorf("invalid grid input - negative plane")
+	}
 	m, err := s.storeGrid(height, width)
 	if err != nil {
 		return nil, err
@@ -84,6 +86,13 @@ func (s *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRe
 }
 
 func search(grid Matrix, st, ed *pb.Coordinates) *pb.SendCoordinatesResponse {
+	// If start and end coordinates are same, return 0 distance and empty route -- May remove
+	if st.GetX() == ed.GetX() && st.GetY() == ed.GetY() {
+		return &pb.SendCoordinatesResponse{
+			Distance: 0,
+			Route:    []*pb.Coordinates{},
+		}
+	}
 
 	// Initialize structures to manage the search
 
