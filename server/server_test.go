@@ -1,7 +1,7 @@
 package server
 
 import (
-	pb "RouteRaydar/routeRaydar"
+	pb "RouteRaydar/api"
 	"context"
 	"testing"
 
