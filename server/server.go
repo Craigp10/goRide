@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	pb "RouteRaydar/proto"
 
@@ -234,4 +235,27 @@ func validCoordinates(grid Matrix, coord *pb.Coordinates) bool {
 		return false
 	}
 	return true
+}
+
+func (rrs *RouteRaydarServer) StreamRide(req *pb.StreamRideRequest, stream pb.RouteService_StreamRideServer) error {
+	routeID := req.GetRouteId()
+	uu, err := uuid.Parse(routeID)
+	if err != nil {
+		return fmt.Errorf("error parsing route id %e", err)
+	}
+
+	route, ok := rrs.routes[uu]
+	if !ok {
+		return fmt.Errorf("the route has not been discovered")
+	}
+
+	for _, coord := range route {
+		if err := stream.Send(coord); err != nil {
+			return err
+		}
+		// Sleep stream to stimulate a "ride" in progress
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil
 }
