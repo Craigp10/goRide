@@ -10,24 +10,34 @@ import (
 
 	pb "RouteRaydar/proto"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
 // server is used to implement routeRaydar.RouteServiceServer
 type RouteRaydarServer struct {
 	pb.RouteServiceServer
-	grid Matrix
-	mu   sync.Mutex // protects routeNotes
+	grid   Matrix
+	mu     sync.Mutex                      // protects routeNotes
+	routes map[uuid.UUID][]*pb.Coordinates // Stored rooutes, stored by a created uuid
 }
 
 // GetRoute implements routeRaydar.RouteServiceServer
-func (s *RouteRaydarServer) GetRoute(ctx context.Context, req *pb.GetRouteRequest) (*pb.GetRouteResponse, error) {
+func (rrs *RouteRaydarServer) GetRoute(ctx context.Context, req *pb.GetRouteRequest) (*pb.GetRouteResponse, error) {
 	// Implement logic to retrieve route based on request parameters
 	routeID := req.GetRouteId()
-
+	uu, err := uuid.Parse(routeID)
+	fmt.Println("Route uuid", uu)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing route id %e", err)
+	}
+	fmt.Println("Routes", rrs.routes)
+	route := rrs.routes[uu]
+	fmt.Println("Route", route)
 	// Return the route in the response
 	return &pb.GetRouteResponse{
 		RouteId: routeID,
+		Route:   route,
 		// Populate other fields as needed
 	}, nil
 }
@@ -39,10 +49,12 @@ func StartServer() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterRouteServiceServer(s, &RouteRaydarServer{})
+	rrs := &RouteRaydarServer{}
+	rrs.routes = make(map[uuid.UUID][]*pb.Coordinates)
+	pb.RegisterRouteServiceServer(s, rrs)
 	log.Println("Starting routeRaydar gRPC server on port 50051...")
 
-	// if err := s.Serve(lis); err != nil {
+	// if err := rrs.Serve(lis); err != nil {
 	// 	log.Fatalf("failed to serve: %v", err)
 	// }
 	// Start gRPC server via separate go Routine (so that a http server can run in the current routine)
@@ -64,20 +76,20 @@ func StartServer() {
 
 }
 
-func (s *RouteRaydarServer) storeGrid(rows, cols int64) (Matrix, error) {
+func (rrs *RouteRaydarServer) storeGrid(rows, cols int64) (Matrix, error) {
 	grid := *NewMatrix(rows, cols)
-	s.grid = grid
+	rrs.grid = grid
 	return grid, nil
 }
 
 // Implement the SubmitGrid method of the RouteRaydarServer interface
-func (s *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRequest) (*pb.SubmitGridResponse, error) {
+func (rrs *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRequest) (*pb.SubmitGridResponse, error) {
 	// Your implementation for SubmitGrid
 	height, width := req.GetHeight(), req.GetWidth()
 	if height < 0 || width < 0 {
 		return nil, fmt.Errorf("invalid grid input - negative plane")
 	}
-	m, err := s.storeGrid(height, width)
+	m, err := rrs.storeGrid(height, width)
 	if err != nil {
 		return nil, err
 	}
@@ -162,19 +174,26 @@ func search(grid Matrix, st, ed *pb.Coordinates) *pb.SendCoordinatesResponse {
 }
 
 // Implement the SendNewPoints method of the RouteRaydarServer interface.
-func (s *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
+func (rrs *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
 	st := req.GetStart()
 	ed := req.GetEnd()
 
-	if !validCoordinates(s.grid, st) || !validCoordinates(s.grid, ed) {
+	if !validCoordinates(rrs.grid, st) || !validCoordinates(rrs.grid, ed) {
 		return nil, fmt.Errorf("the provided start or end coordinate is not on the grid plane.")
 	}
 
 	// Begin searching the grid
-	res := search(s.grid, st, ed)
+	res := search(rrs.grid, st, ed)
 	if res == nil {
 		return nil, fmt.Errorf("Path not found")
 	}
+
+	id := uuid.New()
+	fmt.Println(rrs.routes)
+
+	rrs.routes[id] = res.GetRoute()
+
+	res.RouteId = id.String()
 
 	return res, nil
 }

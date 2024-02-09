@@ -71,7 +71,6 @@ func TestSubmitGrid(t *testing.T) {
 	})
 }
 
-// go test -run TestSendCoordinates -v
 func TestSendCoordinates(t *testing.T) {
 	go StartServer()
 
@@ -96,7 +95,7 @@ func TestSendCoordinates(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
-
+	var routeId string
 	t.Run("Send Standard Coordinates", func(t *testing.T) {
 		res, err := client.SendCoordinates(ctx, &pb.SendCoordinatesRequest{
 			Start: &pb.Coordinates{
@@ -111,6 +110,8 @@ func TestSendCoordinates(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 		require.Equal(t, int64(11), res.GetDistance())
+		require.NotEmpty(t, res.GetRouteId())
+		routeId = res.GetRouteId()
 	})
 
 	t.Run("Send Standard Coordinates", func(t *testing.T) {
@@ -180,5 +181,15 @@ func TestSendCoordinates(t *testing.T) {
 		})
 		require.Error(t, err)
 		require.Empty(t, res)
+	})
+
+	t.Run("Get Route", func(t *testing.T) {
+		req := &pb.GetRouteRequest{
+			RouteId: routeId,
+		}
+		res, err := client.GetRoute(ctx, req)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
+		t.Log(res)
 	})
 }
