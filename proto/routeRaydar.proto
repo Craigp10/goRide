@@ -11,6 +11,7 @@ service RouteService {
   rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
   rpc SubmitGrid(SubmitGridRequest) returns (SubmitGridResponse);
   rpc SendCoordinates(SendCoordinatesRequest) returns (SendCoordinatesResponse);
+  rpc StreamRide(StreamRideRequest) returns (stream Coordinates);
 }
 
 message Grid {
@@ -34,7 +35,7 @@ message GetRouteRequest {
 // The response message containing the route details.
 message GetRouteResponse {
   string route_id = 1;
-  
+  repeated Coordinates route = 2;
   // Add other fields as needed to describe the route
 }
 
@@ -61,6 +62,12 @@ message SendCoordinatesRequest {
 message SendCoordinatesResponse {
   // Define the structure of the new points response message
   // Add fields as needed
-  repeated Coordinates route = 1;
-  int64 distance = 2;
+  string route_id = 1;
+  repeated Coordinates route = 2;
+  int64 distance = 3;
+}
+
+
+message StreamRideRequest {
+  string route_id = 1;
 }

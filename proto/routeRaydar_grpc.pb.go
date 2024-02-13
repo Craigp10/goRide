@@ -26,6 +26,7 @@ type RouteServiceClient interface {
 	GetRoute(ctx context.Context, in *GetRouteRequest, opts ...grpc.CallOption) (*GetRouteResponse, error)
 	SubmitGrid(ctx context.Context, in *SubmitGridRequest, opts ...grpc.CallOption) (*SubmitGridResponse, error)
 	SendCoordinates(ctx context.Context, in *SendCoordinatesRequest, opts ...grpc.CallOption) (*SendCoordinatesResponse, error)
+	StreamRide(ctx context.Context, in *StreamRideRequest, opts ...grpc.CallOption) (RouteService_StreamRideClient, error)
 }
 
 type routeServiceClient struct {
@@ -63,6 +64,38 @@ func (c *routeServiceClient) SendCoordinates(ctx context.Context, in *SendCoordi
 	return out, nil
 }
 
+func (c *routeServiceClient) StreamRide(ctx context.Context, in *StreamRideRequest, opts ...grpc.CallOption) (RouteService_StreamRideClient, error) {
+	stream, err := c.cc.NewStream(ctx, &RouteService_ServiceDesc.Streams[0], "/routeRaydar.RouteService/StreamRide", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &routeServiceStreamRideClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type RouteService_StreamRideClient interface {
+	Recv() (*Coordinates, error)
+	grpc.ClientStream
+}
+
+type routeServiceStreamRideClient struct {
+	grpc.ClientStream
+}
+
+func (x *routeServiceStreamRideClient) Recv() (*Coordinates, error) {
+	m := new(Coordinates)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // RouteServiceServer is the server API for RouteService service.
 // All implementations must embed UnimplementedRouteServiceServer
 // for forward compatibility
@@ -71,6 +104,7 @@ type RouteServiceServer interface {
 	GetRoute(context.Context, *GetRouteRequest) (*GetRouteResponse, error)
 	SubmitGrid(context.Context, *SubmitGridRequest) (*SubmitGridResponse, error)
 	SendCoordinates(context.Context, *SendCoordinatesRequest) (*SendCoordinatesResponse, error)
+	StreamRide(*StreamRideRequest, RouteService_StreamRideServer) error
 	mustEmbedUnimplementedRouteServiceServer()
 }
 
@@ -86,6 +120,9 @@ func (UnimplementedRouteServiceServer) SubmitGrid(context.Context, *SubmitGridRe
 }
 func (UnimplementedRouteServiceServer) SendCoordinates(context.Context, *SendCoordinatesRequest) (*SendCoordinatesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendCoordinates not implemented")
+}
+func (UnimplementedRouteServiceServer) StreamRide(*StreamRideRequest, RouteService_StreamRideServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamRide not implemented")
 }
 func (UnimplementedRouteServiceServer) mustEmbedUnimplementedRouteServiceServer() {}
 
@@ -154,6 +191,27 @@ func _RouteService_SendCoordinates_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RouteService_StreamRide_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamRideRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RouteServiceServer).StreamRide(m, &routeServiceStreamRideServer{stream})
+}
+
+type RouteService_StreamRideServer interface {
+	Send(*Coordinates) error
+	grpc.ServerStream
+}
+
+type routeServiceStreamRideServer struct {
+	grpc.ServerStream
+}
+
+func (x *routeServiceStreamRideServer) Send(m *Coordinates) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // RouteService_ServiceDesc is the grpc.ServiceDesc for RouteService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -174,6 +232,12 @@ var RouteService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RouteService_SendCoordinates_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamRide",
+			Handler:       _RouteService_StreamRide_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/routeRaydar.proto",
 }
