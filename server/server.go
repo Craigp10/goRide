@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 
-	pb "RouteRaydar/api"
+	pb "RouteRaydar/proto"
 
 	"google.golang.org/grpc"
 )

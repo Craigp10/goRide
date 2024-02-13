@@ -1,6 +1,6 @@
 package server
 
-import pb "RouteRaydar/api"
+import pb "RouteRaydar/proto"
 
 type Matrix struct {
 	Rows int64
