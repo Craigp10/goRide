@@ -57,7 +57,6 @@ func TestSubmitGrid(t *testing.T) {
 			Width:  1,
 			Height: 5,
 		})
-		t.Log(res)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
@@ -67,8 +66,8 @@ func TestSubmitGrid(t *testing.T) {
 			Width:  1,
 			Height: -5,
 		})
-		t.Log(res)
 		require.Error(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 

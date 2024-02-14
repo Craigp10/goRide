@@ -28,13 +28,10 @@ func (rrs *RouteRaydarServer) GetRoute(ctx context.Context, req *pb.GetRouteRequ
 	// Implement logic to retrieve route based on request parameters
 	routeID := req.GetRouteId()
 	uu, err := uuid.Parse(routeID)
-	fmt.Println("Route uuid", uu)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing route id %e", err)
 	}
-	fmt.Println("Routes", rrs.routes)
 	route := rrs.routes[uu]
-	fmt.Println("Route", route)
 	// Return the route in the response
 	return &pb.GetRouteResponse{
 		RouteId: routeID,
