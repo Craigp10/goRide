@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"RouteRaydar/kafka/admin"
+	consumer "RouteRaydar/kafka/consumer"
+	producer "RouteRaydar/kafka/producer"
 	"context"
 	"fmt"
 	"log"
@@ -8,10 +11,10 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// TODO: Need to figure how to properly set up the kafka client in my application to manage the idea I had for it
-// How will new clients connect to the app and act as a consumer, what will my func need to look like to keep the process open?
-// What sort of business logic will need to be in the application to utilize the kafka client in this mannor. Or should I
-// Just bake this logic into the client for now and decouple later.
+// TODO: Need to figure how to properly set up the kafka client in the application to manage the idea I had for it
+// How will new clients connect to the app and act as a consumer, what will the func need to look like to keep the process open?
+// What sort of business logic will need to be in the application to utilize the kafka client in this mannor. should
+// just bake this logic into the client for now and decouple later?
 
 // Not used atm
 type Config struct {
@@ -20,24 +23,28 @@ type Config struct {
 
 // Client represents a Kafka client.
 type Client struct {
-	producer *kafka.Producer
-	consumer *kafka.Consumer
+	producer    *producer.KafkaProducer
+	consumer    *consumer.KafkaConsumer
+	adminClient *admin.KafkaAdminClient
 	// TODO: Add support for multiple 'consumers'
 	// consumers map[string]*kafka.Consumer
 }
 
-type TopicConfig struct {
+type TopicConfig struct{}
+
+type TopicDetails struct {
+	admin.TopicDescribe
 }
 
 // NewClient creates a new Kafka client.
 // TODO: Add depedency injection support.
 func NewClient() (*Client, error) {
-	newProducer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+	newProducer, err := producer.NewProducer()
 	if err != nil {
 		return nil, err
 	}
 
-	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": "localhost", "group.id": "group1"})
+	consumer, err := consumer.NewConsumer()
 
 	if err != nil {
 		log.Fatalf("error creating kafka client consumer: %v", err)
@@ -46,8 +53,15 @@ func NewClient() (*Client, error) {
 
 	// TODO: Add support for multiple consumers
 	// kafkaConsumers := make(map[string]*kafka.Consumer)
+	cfg := admin.AdminClientConfig{}
 
-	return &Client{producer: newProducer, consumer: consumer}, nil
+	ac, err := admin.NewAdminClient(cfg)
+
+	if err != nil {
+		log.Fatalf("error creating kafka client consumer: %v", err)
+	}
+
+	return &Client{producer: newProducer, consumer: consumer, adminClient: ac}, nil
 }
 
 // Close closes the Kafka client.
@@ -58,61 +72,31 @@ func (c *Client) Close() {
 
 // ProduceMessage produces a message to the specified topic.
 func (c *Client) ProduceMessage(topic string, message []byte) error {
-	return c.producer.Produce(&kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic}, Value: message}, nil)
-}
-
-// ConsumeMessages consumes messages from the specified topic.
-func (c *Client) ConsumeMessages(ctx context.Context, topic string, fromBeginning bool, handler func([]byte)) {
-	cfg := &kafka.ConfigMap{
-		"bootstrap.servers": "localhost",
-		"group.id":          "group1",
-	}
-	consumer, err := kafka.NewConsumer(cfg)
-
-	if err != nil {
-		log.Fatalf("Error creating consumer: %v", err)
-	}
-	defer consumer.Close()
-
-	err = consumer.Subscribe(topic, nil)
-	if err != nil {
-		log.Fatalf("Error subscribing to topic %s: %v", topic, err)
-	}
-
-	fmt.Println("Consumer is listening")
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Context cancelled. Stopping consumer.")
-			return
-		default:
-			msg, err := consumer.ReadMessage(-1)
-			if err != nil {
-				log.Printf("Error reading message: %v", err)
-				continue
-			}
-			handler(msg.Value)
-		}
-	}
+	return c.producer.ProduceMessage(topic, message)
 }
 
 func (c *Client) NewTopic(ctx context.Context, name string, cfg TopicConfig) error {
-
-	for _, word := range []string{"Welcome", "to", "the", "Confluent", "Kafka", "Golang", "client"} {
-		err := c.PublishMessage(ctx, name, word)
-		if err != nil {
-			return err
-		}
+	tc := admin.TopicConfig{
+		Topic:             "kafka.test.topic",
+		NumPartitions:     1,
+		ReplicationFactor: 1,
+	}
+	_, err := c.adminClient.CreateTopic(ctx, tc)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
+// func (c *Client) DescribeTopic(ctx context.Context, name string) (kafka.TopicDescription, error) {
+// 	var topic kafka.TopicDescription
+
+// 	return topic, nil
+// }
+
 func (c *Client) PublishMessage(ctx context.Context, topic string, m string) error {
-	err := c.producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          []byte(m),
-	}, nil)
+	err := c.producer.ProduceMessage(topic, []byte(m))
 
 	if err != nil {
 		return err
@@ -131,27 +115,18 @@ func (c *Client) NewSubscription(ctx context.Context, topic string, ct string) e
 	return nil
 }
 
-func (c *Client) NewConsumer(ctx context.Context) error
+func (c *Client) DescribeTopic(ctx context.Context, topic string) (*TopicDetails, error) {
+	to, err := c.adminClient.DescribeTopic(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
 
-// type Producer interface {
-// 	Produce(*kafka.Message, chan kafka.Event) error
-// 	Close() error
-// }
-
-// // Consumer defines the interface for a Kafka consumer.
-// type Consumer interface {
-// 	SubscribeTopics([]string, kafka.RebalanceCb) error
-// 	ReadMessage(int) (*kafka.Message, error)
-// 	Close() error
-// }
+	return &TopicDetails{
+		*to,
+	}, nil
+}
 
 // type Config struct {
 // 	bootstrapServer string
 // 	brokers         []string
-// }
-
-// type Client struct {
-// 	topics        []uuid.UUID // Meant to represent the 'topcis' within the Kafka instance
-// 	rideProducer  *kafka.Producer
-// 	rideConsumers map[string]*kafka.Consumer
 // }
