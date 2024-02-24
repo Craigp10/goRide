@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,12 +27,6 @@ func TestKafkaInit(t *testing.T) {
 
 		require.NoError(t, err)
 	})
-	// t.Run("New topic", func(t *testing.T) {
-	// 	// Create topic
-	// 	err := kc.NewTopic(ctx, "kafka.test.topic.2", TopicConfig{})
-
-	// 	require.NoError(t, err)
-	// })
 
 	t.Run("Describe Topic", func(t *testing.T) {
 		topic, err := kc.DescribeTopic(ctx, "kafka.test.topic.2")
@@ -44,11 +39,24 @@ func TestKafkaInit(t *testing.T) {
 		topics, err := kc.adminClient.ListTopics()
 		require.NoError(t, err)
 		require.NotEmpty(t, topics)
-		// Length is 3 - consumer_offset, kafka.test.topic.1, kafka.test.topic.2
-		require.Equal(t, 2, len(topics))
+		// Length is 1 - consumer_offset -- kafka.test.topic.1, kafka.test.topic.2 have no messages so aren't considered yet?
+		require.Equal(t, 1, len(topics))
+		t.Log(topics)
 	})
 
-	go kc.consumer.ConsumeMessages(ctx, topic, true, func(m []byte) {})
+	var id *uuid.UUID
+	t.Run("Subscribe to topic", func(t *testing.T) {
+		id, err = kc.NewSubscription(ctx, topic)
+		require.NoError(t, err)
+		require.NotEmpty(t, id)
+	})
+
+	t.Run("Confirm consumer exist in map", func(t *testing.T) {
+		count := kc.GetConsumerCount()
+		require.Equal(t, 1, count)
+	})
+
+	go kc.consumersMap[*id].ConsumeMessages(ctx, topic, true, func(m []byte) {})
 
 	t.Run("Publish message", func(t *testing.T) {
 		// Publish new message

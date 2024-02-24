@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/google/uuid"
 )
 
 // TODO: Need to figure how to properly set up the kafka client in the application to manage the idea I had for it
@@ -23,11 +24,10 @@ type Config struct {
 
 // Client represents a Kafka client.
 type Client struct {
-	producer    *producer.KafkaProducer
-	consumer    *consumer.KafkaConsumer
-	adminClient *admin.KafkaAdminClient
-	// TODO: Add support for multiple 'consumers'
-	// consumers map[string]*kafka.Consumer
+	producer     *producer.KafkaProducer
+	adminClient  *admin.KafkaAdminClient
+	consumersMap map[uuid.UUID]*consumer.KafkaConsumer
+	consumers    int
 }
 
 type TopicConfig struct{}
@@ -44,15 +44,16 @@ func NewClient() (*Client, error) {
 		return nil, err
 	}
 
-	consumer, err := consumer.NewConsumer()
+	// consumer, err := consumer.NewConsumer()
+	consumers := 0
+
+	consumersMap := make(map[uuid.UUID]*consumer.KafkaConsumer)
 
 	if err != nil {
 		log.Fatalf("error creating kafka client consumer: %v", err)
 	}
 	// defer consumer.Close()
 
-	// TODO: Add support for multiple consumers
-	// kafkaConsumers := make(map[string]*kafka.Consumer)
 	cfg := admin.AdminClientConfig{}
 
 	ac, err := admin.NewAdminClient(cfg)
@@ -61,13 +62,26 @@ func NewClient() (*Client, error) {
 		log.Fatalf("error creating kafka client consumer: %v", err)
 	}
 
-	return &Client{producer: newProducer, consumer: consumer, adminClient: ac}, nil
+	return &Client{producer: newProducer, consumersMap: consumersMap, consumers: consumers, adminClient: ac}, nil
 }
 
-// Close closes the Kafka client.
+// Close closes the Kafka client. Panics on error, will need to update later.
 func (c *Client) Close() {
-	c.producer.Close()
-	c.consumer.Close()
+	err := c.producer.Close()
+	if err != nil {
+		log.Panicf("error closing kafka producer: %v", err)
+	}
+	for consumer := range c.consumersMap {
+		err = c.consumersMap[consumer].Close()
+		if err != nil {
+			log.Panicf("error closing kafka consumer: %s with error: %v", consumer, err)
+		}
+		c.consumers--
+	}
+}
+
+func (c *Client) GetConsumerCount() int {
+	return c.consumers
 }
 
 // ProduceMessage produces a message to the specified topic.
@@ -106,13 +120,21 @@ func (c *Client) PublishMessage(ctx context.Context, topic string, m string) err
 }
 
 // func (c *Client) RemoveTopic(ctx context.Context) error
-func (c *Client) NewSubscription(ctx context.Context, topic string, ct string) error {
-	err := c.consumer.SubscribeTopics([]string{topic}, nil)
+func (c *Client) NewSubscription(ctx context.Context, topic string) (*uuid.UUID, error) {
+	newConsumer, err := consumer.NewConsumer()
 	if err != nil {
-		return fmt.Errorf("failed to subscribe to topic: %v", err)
+		return nil, fmt.Errorf("error generating new consumer in new subscription")
 	}
+	err = newConsumer.SubscribeTopics([]string{topic}, nil)
+	if err != nil {
 
-	return nil
+		return nil, fmt.Errorf("failed to subscribe to topic: %v", err)
+	}
+	newConsumerId := uuid.New()
+	c.consumersMap[newConsumerId] = newConsumer
+	c.consumers++
+
+	return &newConsumerId, nil
 }
 
 func (c *Client) DescribeTopic(ctx context.Context, topic string) (*TopicDetails, error) {
