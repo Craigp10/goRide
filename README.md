@@ -11,13 +11,23 @@ Will be added after version 2...
 
 ## Run the application
 
+# Build the go server binary
+
+```
+docker build -t route-raydar:1.0 .
+```
+
 # Run App within container Docker
 
-`docker run -d -p 50051:50051 -p 8080:8080 --name grpc_server route-raydar`
+```
+docker run -d -p 50051:50051 -p 8080:8080 --name grpc_server route-raydar
+```
 
 # Run App separately
 
-`go run main.go`
+```
+go run main.go
+```
 
 # Test the application
 

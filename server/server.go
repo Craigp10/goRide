@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"RouteRaydar/kafka"
 	pb "RouteRaydar/proto"
 
 	"github.com/google/uuid"
@@ -66,6 +67,15 @@ func StartServer() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, RouteRaydar!\n")
 	})
+
+	fmt.Println("Connecting to Kafka on port 9092...")
+
+	// Initialize Kafka Service
+	kc, err := kafka.NewClient()
+	if err != nil {
+		log.Fatalf("failed to init kafka: %v", err)
+	}
+	fmt.Println("Successfully initalized Kafka", kc)
 
 	log.Println("Starting routeRaydar HTTP server on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

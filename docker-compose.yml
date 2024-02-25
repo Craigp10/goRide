@@ -1,0 +1,32 @@
+version: '3'
+services:
+  route-raydar:
+    image: route-raydar:1.0
+    container_name: grpc_server
+    ports: 
+      - "50051:50051"
+      - "8080:8080"
+  zookeeper:
+    image: zookeeper:latest
+    ports:
+      - "2181:2181"
+    container_name: zookeeper
+  
+  kafka:
+    image: wurstmeister/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:29092
+      # KAFKA_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # KAFKA_LOG_DIRS: /var/lib/kafka-logs
+    depends_on:
+      - zookeeper
