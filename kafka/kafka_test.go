@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	consumer "RouteRaydar/kafka/consumer"
 	"context"
 	"testing"
 	"time"
@@ -15,6 +16,10 @@ func TestKafkaInit(t *testing.T) {
 	var kc *Client
 	var err error
 	t.Run("Initialize Kafka Client", func(t *testing.T) {
+		// cfg := Config{
+		// 	ProducerConfig: &producer.ProducerConfig{Config: &kafka.ConfigMap{"bootstrap.servers": "localhost"}},
+		// 	ConsumerConfig: &consumer.ConsumerConfig{Config: &kafka.ConfigMap{"bootstrap.servers": "localhost", "group.id": "group1"}},
+		// }
 		kc, err = NewClient()
 		require.NoError(t, err)
 		require.NotEmpty(t, kc)
@@ -46,7 +51,8 @@ func TestKafkaInit(t *testing.T) {
 
 	var id *uuid.UUID
 	t.Run("Subscribe to topic", func(t *testing.T) {
-		id, err = kc.NewSubscription(ctx, topic)
+		consumerCfg := consumer.NewConsumerConfig("localhost", "group1")
+		id, err = kc.NewSubscription(ctx, topic, consumerCfg)
 		require.NoError(t, err)
 		require.NotEmpty(t, id)
 	})

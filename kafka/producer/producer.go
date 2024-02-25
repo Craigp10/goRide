@@ -18,8 +18,19 @@ type KafkaProducer struct {
 	producer *kafka.Producer
 }
 
-func NewProducer() (*KafkaProducer, error) {
-	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+type ProducerConfig struct {
+	// Producer
+	broker string
+}
+
+func NewProducerConfig(broker string) *ProducerConfig {
+	return &ProducerConfig{
+		broker: broker,
+	}
+}
+func NewProducer(producerConfig *ProducerConfig) (*KafkaProducer, error) {
+	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": producerConfig.broker})
+	// p, err := kafka.NewProducer(producerConfig.Config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating producer: %v", err)
 	}

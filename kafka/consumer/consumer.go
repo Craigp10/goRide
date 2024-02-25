@@ -21,8 +21,21 @@ type KafkaConsumer struct {
 	consumer *kafka.Consumer
 }
 
-func NewConsumer() (*KafkaConsumer, error) {
-	kc, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": "localhost", "group.id": "group1"})
+type ConsumerConfig struct {
+	groupId string
+	broker  string
+	// *kafka.ConfigMap
+}
+
+func NewConsumerConfig(broker, group_id string) *ConsumerConfig {
+	return &ConsumerConfig{
+		broker:  broker,
+		groupId: group_id,
+	}
+}
+
+func NewConsumer(consumerConfig *ConsumerConfig) (*KafkaConsumer, error) {
+	kc, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": consumerConfig.broker, "group.id": consumerConfig.groupId})
 	if err != nil {
 		return nil, fmt.Errorf("error creating consumer: %v", err)
 	}

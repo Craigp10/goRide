@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/google/uuid"
 )
 
@@ -17,9 +16,10 @@ import (
 // What sort of business logic will need to be in the application to utilize the kafka client in this mannor. should
 // just bake this logic into the client for now and decouple later?
 
-// Not used atm
 type Config struct {
-	*kafka.ConfigMap
+	// consumerGroups string
+	ProducerConfig *producer.ProducerConfig
+	ConsumerConfig *consumer.ConsumerConfig
 }
 
 // Client represents a Kafka client.
@@ -39,7 +39,8 @@ type TopicDetails struct {
 // NewClient creates a new Kafka client.
 // TODO: Add depedency injection support.
 func NewClient() (*Client, error) {
-	newProducer, err := producer.NewProducer()
+	cfg := producer.NewProducerConfig("localhost")
+	newProducer, err := producer.NewProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +55,9 @@ func NewClient() (*Client, error) {
 	}
 	// defer consumer.Close()
 
-	cfg := admin.AdminClientConfig{}
+	adminCfg := admin.AdminClientConfig{}
 
-	ac, err := admin.NewAdminClient(cfg)
+	ac, err := admin.NewAdminClient(adminCfg)
 
 	if err != nil {
 		log.Fatalf("error creating kafka client consumer: %v", err)
@@ -91,7 +92,7 @@ func (c *Client) ProduceMessage(topic string, message []byte) error {
 
 func (c *Client) NewTopic(ctx context.Context, name string, cfg TopicConfig) error {
 	tc := admin.TopicConfig{
-		Topic:             "kafka.test.topic",
+		Topic:             name,
 		NumPartitions:     1,
 		ReplicationFactor: 1,
 	}
@@ -120,8 +121,8 @@ func (c *Client) PublishMessage(ctx context.Context, topic string, m string) err
 }
 
 // func (c *Client) RemoveTopic(ctx context.Context) error
-func (c *Client) NewSubscription(ctx context.Context, topic string) (*uuid.UUID, error) {
-	newConsumer, err := consumer.NewConsumer()
+func (c *Client) NewSubscription(ctx context.Context, topic string, cfg *consumer.ConsumerConfig) (*uuid.UUID, error) {
+	newConsumer, err := consumer.NewConsumer(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error generating new consumer in new subscription")
 	}
