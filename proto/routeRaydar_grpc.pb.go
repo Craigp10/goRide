@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.12
-// source: api/routeRaydar.proto
+// source: proto/routeRaydar.proto
 
 package routeRaydar
 
@@ -239,5 +239,5 @@ var RouteService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "api/routeRaydar.proto",
+	Metadata: "proto/routeRaydar.proto",
 }
