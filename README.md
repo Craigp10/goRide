@@ -11,24 +11,37 @@ Will be added after version 2...
 
 ## Run the application
 
-# Build the go server binary
+### To build the application a few services need to compile
+
+#### Proto buffers
+
+proto/
+
+#### Go application
+
+main.go
+
+#### Build the Docker image
+
+Dockerfile
+
+### Build the application
+
+Run the build script to compile the executables
 
 ```
-docker build -t route-raydar:1.0 .
+cd build/
+./build.sh
 ```
 
-# Run App within container Docker
+Then run the containerized application run:
 
 ```
-docker run -d -p 50051:50051 -p 8080:8080 --name grpc_server route-raydar
+docker-compose up -d
 ```
 
-# Run App separately
+To bring down the containerized application run:
 
 ```
-go run main.go
+docker-compose down
 ```
-
-# Test the application
-
-Will be added after version 2...
