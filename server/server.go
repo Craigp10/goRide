@@ -21,7 +21,8 @@ type RouteRaydarServer struct {
 	pb.RouteServiceServer
 	grid   Matrix
 	mu     sync.Mutex                      // protects routeNotes
-	routes map[uuid.UUID][]*pb.Coordinates // Stored rooutes, stored by a created uuid
+	routes map[uuid.UUID][]*pb.Coordinates // Stored routes, stored by a created uuid
+	kc     kafka.Client
 }
 
 // GetRoute implements routeRaydar.RouteServiceServer
@@ -68,14 +69,14 @@ func StartServer() {
 		fmt.Fprintf(w, "Hello, RouteRaydar!\n")
 	})
 
-	fmt.Println("Connecting to Kafka on port 9092...")
+	log.Println("Connecting to Kafka on port 9092...")
 
 	// Initialize Kafka Service
 	kc, err := kafka.NewClient()
 	if err != nil {
 		log.Fatalf("failed to init kafka: %v", err)
 	}
-	fmt.Println("Successfully initalized Kafka", kc)
+	log.Println("Successfully initalized Kafka", kc)
 
 	log.Println("Starting routeRaydar HTTP server on port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -181,7 +182,7 @@ func search(grid Matrix, st, ed *pb.Coordinates) *pb.SendCoordinatesResponse {
 	return nil
 }
 
-// Implement the SendNewPoints method of the RouteRaydarServer interface.
+// Implement the SendNewPoints method of the RouteRaydarServer interface. Creates kafka topic of ride (Move out later).
 func (rrs *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
 	st := req.GetStart()
 	ed := req.GetEnd()
@@ -202,6 +203,11 @@ func (rrs *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendC
 	rrs.routes[id] = res.GetRoute()
 
 	res.RouteId = id.String()
+
+	err := rrs.kc.NewTopic(ctx, id.String())
+	if err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }
@@ -263,7 +269,7 @@ func (rrs *RouteRaydarServer) StreamRide(req *pb.StreamRideRequest, stream pb.Ro
 			return err
 		}
 		// Sleep stream to stimulate a "ride" in progress
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 	return nil

@@ -6,6 +6,10 @@ services:
     ports: 
       - "50051:50051"
       - "8080:8080"
+    depends_on:
+      - zookeeper
+      - kafka
+
   zookeeper:
     image: zookeeper:latest
     ports:
@@ -26,7 +30,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       ALLOW_PLAINTEXT_LISTENER: "yes"
-      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # KAFKA_LOG_DIRS: /var/lib/kafka-logs
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka-logs
     depends_on:
       - zookeeper

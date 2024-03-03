@@ -28,7 +28,7 @@ func TestKafkaInit(t *testing.T) {
 	topic := "kafka.test.topic.1"
 	t.Run("Create topic", func(t *testing.T) {
 		// Create topic
-		err := kc.NewTopic(ctx, topic, TopicConfig{})
+		err := kc.NewTopic(ctx, topic)
 
 		require.NoError(t, err)
 	})
@@ -51,7 +51,7 @@ func TestKafkaInit(t *testing.T) {
 
 	var id *uuid.UUID
 	t.Run("Subscribe to topic", func(t *testing.T) {
-		consumerCfg := consumer.NewConsumerConfig("localhost", "group1")
+		consumerCfg := consumer.NewConsumerConfig(BOOTSTRAP_SERVER, "group1")
 		id, err = kc.NewSubscription(ctx, topic, consumerCfg)
 		require.NoError(t, err)
 		require.NotEmpty(t, id)

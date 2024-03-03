@@ -15,6 +15,9 @@ import (
 // How will new clients connect to the app and act as a consumer, what will the func need to look like to keep the process open?
 // What sort of business logic will need to be in the application to utilize the kafka client in this mannor. should
 // just bake this logic into the client for now and decouple later?
+const (
+	BOOTSTRAP_SERVER = "localhost"
+)
 
 type Config struct {
 	// consumerGroups string
@@ -39,7 +42,7 @@ type TopicDetails struct {
 // NewClient creates a new Kafka client.
 // TODO: Add depedency injection support.
 func NewClient() (*Client, error) {
-	cfg := producer.NewProducerConfig("localhost")
+	cfg := producer.NewProducerConfig(BOOTSTRAP_SERVER)
 	newProducer, err := producer.NewProducer(cfg)
 	if err != nil {
 		return nil, err
@@ -90,7 +93,7 @@ func (c *Client) ProduceMessage(topic string, message []byte) error {
 	return c.producer.ProduceMessage(topic, message)
 }
 
-func (c *Client) NewTopic(ctx context.Context, name string, cfg TopicConfig) error {
+func (c *Client) NewTopic(ctx context.Context, name string) error {
 	tc := admin.TopicConfig{
 		Topic:             name,
 		NumPartitions:     1,
