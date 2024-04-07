@@ -251,7 +251,7 @@ func validCoordinates(grid Matrix, coord *pb.Coordinates) bool {
 }
 
 func (rrs *RouteRaydarServer) StreamRide(req *pb.StreamRideRequest, stream pb.RouteService_StreamRideServer) error {
-	// ctx := stream.Context() -- Context for the stream -- passed via stream handler, not arguments (urnary rpc does this way)
+	// ctx := stream.Context() -- Context for the stream -- passed via stream handler, not an argument (urnary rpc does this way)
 
 	routeID := req.GetRouteId()
 	uu, err := uuid.Parse(routeID)

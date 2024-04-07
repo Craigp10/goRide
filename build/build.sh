@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -ex
 # Leave build/ directory
 cd ..
 
