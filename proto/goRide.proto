@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package routeRaydar;
+package goRide;
 
-option go_package = "github.com/Craigp10/routeRaydar/routeRaydar";
+option go_package = "github.com/Craigp10/goRide/goRide";
 
 
 // The route service definition.

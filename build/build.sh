@@ -7,7 +7,7 @@ cd ..
 SOURCE_FILE="main"
 
 # Specify the name of the output binary
-OUTPUT_BINARY="RouteRaydar"
+OUTPUT_BINARY="goRide"
 
 # Specify the name of the Docker image
 IMAGE_NAME="route-raydar:1.0"
@@ -16,7 +16,7 @@ IMAGE_NAME="route-raydar:1.0"
 
 if [ $? -eq 0 ]; then
   echo "Compiling Proto buffers."
-  protoc --go_out=. --go_opt=paths=source_relative  --go-grpc_out=. --go-grpc_opt=paths=source_relative  proto/routeRaydar.proto
+  protoc --go_out=. --go_opt=paths=source_relative  --go-grpc_out=. --go-grpc_opt=paths=source_relative  proto/goRide.proto
   if [ $? -eq 0 ]; then
 
     echo "Compiling Go application. This may take a moment..."
