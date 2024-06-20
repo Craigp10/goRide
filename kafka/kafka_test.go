@@ -1,8 +1,8 @@
 package kafka
 
 import (
-	consumer "RouteRaydar/kafka/consumer"
 	"context"
+	consumer "goRide/kafka/consumer"
 	"testing"
 	"time"
 

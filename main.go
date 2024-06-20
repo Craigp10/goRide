@@ -1,8 +1,8 @@
-// package routeraydar
+// package goRide
 package main
 
 import (
-	"RouteRaydar/server"
+	"goRide/server"
 )
 
 func main() {

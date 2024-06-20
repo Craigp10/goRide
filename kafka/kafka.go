@@ -1,11 +1,11 @@
 package kafka
 
 import (
-	"RouteRaydar/kafka/admin"
-	consumer "RouteRaydar/kafka/consumer"
-	producer "RouteRaydar/kafka/producer"
 	"context"
 	"fmt"
+	"goRide/kafka/admin"
+	consumer "goRide/kafka/consumer"
+	producer "goRide/kafka/producer"
 	"log"
 
 	"github.com/google/uuid"

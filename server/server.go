@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"RouteRaydar/kafka"
-	pb "RouteRaydar/proto"
+	"goRide/kafka"
+	pb "goRide/proto"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
-// server is used to implement routeRaydar.RouteServiceServer
-type RouteRaydarServer struct {
+// server is used to implement goRide.RouteServiceServer
+type goRideServer struct {
 	pb.RouteServiceServer
 	grid   Matrix
 	mu     sync.Mutex                      // protects routeNotes
@@ -25,8 +25,8 @@ type RouteRaydarServer struct {
 	kc     kafka.Client
 }
 
-// GetRoute implements routeRaydar.RouteServiceServer
-func (rrs *RouteRaydarServer) GetRoute(ctx context.Context, req *pb.GetRouteRequest) (*pb.GetRouteResponse, error) {
+// GetRoute implements goRide.RouteServiceServer
+func (rrs *goRideServer) GetRoute(ctx context.Context, req *pb.GetRouteRequest) (*pb.GetRouteResponse, error) {
 	// Implement logic to retrieve route based on request parameters
 	routeID := req.GetRouteId()
 	uu, err := uuid.Parse(routeID)
@@ -43,16 +43,24 @@ func (rrs *RouteRaydarServer) GetRoute(ctx context.Context, req *pb.GetRouteRequ
 }
 
 // StartServer starts the gRPC server
-func StartServer() {
+func StartServer() *goRideServer {
+
+	// Set up a gRPC client to test the server
+	// conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	// if err != nil {
+	// 	t.Fatalf("failed to dial server: %v", err)
+	// }
+	// defer conn.Close()
+	// client := pb.NewRouteServiceClient(conn)
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	rrs := &RouteRaydarServer{}
+	rrs := &goRideServer{}
 	rrs.routes = make(map[uuid.UUID][]*pb.Coordinates)
 	pb.RegisterRouteServiceServer(s, rrs)
-	log.Println("Starting routeRaydar gRPC server on port 50051...")
+	log.Println("Starting goRide gRPC server on port 50051...")
 
 	// if err := rrs.Serve(lis); err != nil {
 	// 	log.Fatalf("failed to serve: %v", err)
@@ -66,7 +74,7 @@ func StartServer() {
 	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, RouteRaydar!\n")
+		fmt.Fprintf(w, "Hello, goRide!\n")
 	})
 
 	log.Println("Connecting to Kafka on port 9092...")
@@ -78,21 +86,24 @@ func StartServer() {
 	}
 	log.Println("Successfully initalized Kafka", kc)
 
-	log.Println("Starting routeRaydar HTTP server on port 8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("failed to serve HTTP: %v", err)
-	}
+	log.Println("Starting goRide HTTP server on port 8080...")
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatalf("failed to serve HTTP: %v", err)
+		}
+	}()
 
+	return rrs
 }
 
-func (rrs *RouteRaydarServer) storeGrid(rows, cols int64) (Matrix, error) {
+func (rrs *goRideServer) storeGrid(rows, cols int64) (Matrix, error) {
 	grid := *NewMatrix(rows, cols)
 	rrs.grid = grid
 	return grid, nil
 }
 
-// Implement the SubmitGrid method of the RouteRaydarServer interface
-func (rrs *RouteRaydarServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRequest) (*pb.SubmitGridResponse, error) {
+// Implement the SubmitGrid method of the goRideServer interface
+func (rrs *goRideServer) SubmitGrid(ctx context.Context, req *pb.SubmitGridRequest) (*pb.SubmitGridResponse, error) {
 	// Your implementation for SubmitGrid
 	height, width := req.GetHeight(), req.GetWidth()
 	if height < 0 || width < 0 {
@@ -182,8 +193,8 @@ func search(grid Matrix, st, ed *pb.Coordinates) *pb.SendCoordinatesResponse {
 	return nil
 }
 
-// Implement the SendNewPoints method of the RouteRaydarServer interface. Creates kafka topic of ride (Move out later).
-func (rrs *RouteRaydarServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
+// Implement the SendNewPoints method of the goRideServer interface. Creates kafka topic of ride (Move out later).
+func (rrs *goRideServer) SendCoordinates(ctx context.Context, req *pb.SendCoordinatesRequest) (*pb.SendCoordinatesResponse, error) {
 	st := req.GetStart()
 	ed := req.GetEnd()
 
@@ -250,7 +261,7 @@ func validCoordinates(grid Matrix, coord *pb.Coordinates) bool {
 	return true
 }
 
-func (rrs *RouteRaydarServer) StreamRide(req *pb.StreamRideRequest, stream pb.RouteService_StreamRideServer) error {
+func (rrs *goRideServer) StreamRide(req *pb.StreamRideRequest, stream pb.RouteService_StreamRideServer) error {
 	// ctx := stream.Context() -- Context for the stream -- passed via stream handler, not an argument (urnary rpc does this way)
 
 	routeID := req.GetRouteId()
