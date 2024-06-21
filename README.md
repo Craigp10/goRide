@@ -1,4 +1,4 @@
-# Welcome to Route Raydar
+# Welcome to Go Rides
 
 Route Raydar is an Demo applications aimed to mimic similar behavior to ride sharing apps. Currently the progress of the application is focused on the backend services side, with a focus on searching and infrastructure necessary to support it.
 The application is currently in Version 1, which involves the general gRPC services that supports creating a search grid, discovering a route (Shortest path) from 2 coordinates, and streaming the route as a "ride".
