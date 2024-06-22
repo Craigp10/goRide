@@ -22,7 +22,7 @@ type goRideServer struct {
 	grid   Matrix
 	mu     sync.Mutex                      // protects routeNotes
 	routes map[uuid.UUID][]*pb.Coordinates // Stored routes, stored by a created uuid
-	kc     kafka.Client
+	Kc     *kafka.Client
 }
 
 // GetRoute implements goRide.RouteServiceServer
@@ -44,34 +44,9 @@ func (rrs *goRideServer) GetRoute(ctx context.Context, req *pb.GetRouteRequest) 
 
 // StartServer starts the gRPC server
 func StartServer() *goRideServer {
-
-	// Set up a gRPC client to test the server
-	// conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
-	// if err != nil {
-	// 	t.Fatalf("failed to dial server: %v", err)
-	// }
-	// defer conn.Close()
 	// client := pb.NewRouteServiceClient(conn)
-	lis, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
 	rrs := &goRideServer{}
 	rrs.routes = make(map[uuid.UUID][]*pb.Coordinates)
-	pb.RegisterRouteServiceServer(s, rrs)
-	log.Println("Starting goRide gRPC server on port 50051...")
-
-	// if err := rrs.Serve(lis); err != nil {
-	// 	log.Fatalf("failed to serve: %v", err)
-	// }
-	// Start gRPC server via separate go Routine (so that a http server can run in the current routine)
-
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, goRide!\n")
@@ -86,10 +61,28 @@ func StartServer() *goRideServer {
 	}
 	log.Println("Successfully initalized Kafka", kc)
 
+	rrs.Kc = kc
 	log.Println("Starting goRide HTTP server on port 8080...")
 	go func() {
 		if err := http.ListenAndServe(":8080", nil); err != nil {
 			log.Fatalf("failed to serve HTTP: %v", err)
+		}
+	}()
+
+	// Init gRPC server
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+
+	pb.RegisterRouteServiceServer(s, rrs)
+	log.Println("Starting goRide gRPC server on port 50051...")
+
+	// Start gRPC server via separate go Routine (so that a http server can run in the current routine)
+	go func() {
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
@@ -215,7 +208,7 @@ func (rrs *goRideServer) SendCoordinates(ctx context.Context, req *pb.SendCoordi
 
 	res.RouteId = id.String()
 
-	err := rrs.kc.NewTopic(ctx, id.String())
+	err := rrs.Kc.NewTopic(ctx, id.String())
 	if err != nil {
 		return nil, err
 	}
