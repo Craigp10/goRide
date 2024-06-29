@@ -45,3 +45,8 @@ To bring down the containerized application run:
 ```
 docker-compose down
 ```
+
+## Testing
+
+Until mocks are successfully set up, to run unit test properly, bring up the docker-compose network.
+Stop the `grpc_server` container, and run the desired go test. Anything that requires a kafka connection will fail, specifically test that call `SendCoordinates()` because the connection is yet to be successful.

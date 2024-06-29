@@ -71,16 +71,18 @@ func TestStreamRide(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 	var routeId string
+	start := &pb.Coordinates{
+		X: 2,
+		Y: 4,
+	}
+	end := &pb.Coordinates{
+		X: 8,
+		Y: 9,
+	}
 	t.Run("Send Standard Coordinates", func(t *testing.T) {
 		res, err := client.SendCoordinates(ctx, &pb.SendCoordinatesRequest{
-			Start: &pb.Coordinates{
-				X: 2,
-				Y: 4,
-			},
-			End: &pb.Coordinates{
-				X: 8,
-				Y: 9,
-			},
+			Start: start,
+			End:   end,
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
@@ -100,10 +102,8 @@ func TestStreamRide(t *testing.T) {
 			RouteId: routeId,
 		}
 		stream, err := a.StreamRide(ctx, req)
-		// a := pb.routeServiceStreamRideClient{}
-		// var stream pb.RouteService_StreamRideServer
-		// err := client.StreamRide(req, stream)
 		require.NoError(t, err)
+		var ctr int
 		for {
 			res, err := stream.Recv()
 			if err == io.EOF {
@@ -116,8 +116,12 @@ func TestStreamRide(t *testing.T) {
 				break
 			}
 			t.Logf("Received stream response: %v", res)
+			ctr++
 		}
+
+		require.Equal(t, 12, ctr)
 	})
+
 }
 
 func TestSendCoordinates(t *testing.T) {
@@ -251,19 +255,29 @@ func TestValidateKafkaClient(t *testing.T) {
 	rs := StartServer()
 
 	// Set up a gRPC client to test the server
-	// conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
-	// if err != nil {
-	// 	t.Fatalf("failed to dial server: %v", err)
-	// }
-	// defer conn.Close()
+	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("failed to dial server: %v", err)
+	}
+	defer conn.Close()
 
 	// client := pb.NewRouteServiceClient(conn)
+	ctx := context.Background()
 
 	t.Run("init client", func(t *testing.T) {
 		require.NotEmpty(t, rs.Kc)
 	})
+	topicName := "testing.topic.1"
 
-	t.Run("kafka health check", func(t *testing.T) {
+	t.Run("kafka topic create", func(t *testing.T) {
+		err := rs.Kc.NewTopic(ctx, topicName)
+		require.NoError(t, err)
+	})
 
+	t.Run("kafka describe topic", func(t *testing.T) {
+		topic, err := rs.Kc.DescribeTopic(ctx, topicName)
+		require.NoError(t, err)
+		require.NotEmpty(t, topic)
+		t.Log(topic)
 	})
 }

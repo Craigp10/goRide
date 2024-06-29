@@ -53,9 +53,9 @@ func NewClient() (*Client, error) {
 
 	consumersMap := make(map[uuid.UUID]*consumer.KafkaConsumer)
 
-	if err != nil {
-		log.Fatalf("error creating kafka client consumer: %v", err)
-	}
+	// if err != nil {
+	// 	log.Fatalf("error creating kafka client consumer: %v", err)
+	// }
 	// defer consumer.Close()
 
 	adminCfg := admin.AdminClientConfig{}
@@ -106,12 +106,6 @@ func (c *Client) NewTopic(ctx context.Context, name string) error {
 
 	return nil
 }
-
-// func (c *Client) DescribeTopic(ctx context.Context, name string) (kafka.TopicDescription, error) {
-// 	var topic kafka.TopicDescription
-
-// 	return topic, nil
-// }
 
 func (c *Client) PublishMessage(ctx context.Context, topic string, m string) error {
 	err := c.producer.ProduceMessage(topic, []byte(m))
